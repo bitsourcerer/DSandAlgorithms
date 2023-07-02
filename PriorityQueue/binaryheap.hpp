@@ -59,14 +59,9 @@ inline T BinaryHeap<T, P>::top() const
 	return heap_array[1];
 }
 
-
-#include <iostream>
 template <typename T, typename P>
 inline unsigned BinaryHeap<T, P>::height() const
 {
-	for (int i = 1; i <= N; ++i)
-		std::cout << heap_array[i] << ' ';
-	std::cout << std::endl;
 	return std::floor(std::log(N)); //log base 2 of size of the heap array.
 	// and floor it.
 }
