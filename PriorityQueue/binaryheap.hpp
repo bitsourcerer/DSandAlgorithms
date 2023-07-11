@@ -19,6 +19,7 @@ public:
 	void insert(const T &val);
 	T remove();
 	T top() const;
+	T next() const;
 
 	unsigned height() const;
 	unsigned size() const;
@@ -57,6 +58,12 @@ inline T BinaryHeap<T, P>::top() const
 {
 	if(N == 0) throw std::logic_error("top() on empty heap!");
 	return heap_array[1];
+}
+
+template <typename T, typename P>
+inline T BinaryHeap<T, P>::next() const
+{
+	return top();
 }
 
 template <typename T, typename P>

@@ -31,10 +31,6 @@ enum class MergeType
 template <class RAC, typename Predicate = std::less<typename RAC::value_type>>
 void merge_sect(RAC &con, RAC &aux, unsigned lo, unsigned mid, unsigned hi, Predicate compare = Predicate())
 {
-  // assert(is_sorted(con, lo, mid));
-  // assert(is_sorted(con, mid+1, hi));
-  /// Takes linear N time to traverse each array or container which is expensive. also need to be in #ifndef USE_INSERTION_SORT
-
   static const size_t N = con.size();
   for(unsigned k = lo; k <= hi; ++k) aux[k] = con[k];
 
@@ -60,8 +56,8 @@ void sort_sect(RAC &con, RAC &aux, unsigned lo, unsigned hi, Predicate compare =
   if(hi <= lo) return;
   unsigned mid = lo + (hi - lo) / 2;
 
-  sort_sect(con, aux, lo, mid, compare); // start with the wholeleft side and keep splitting it untill we are done
-  sort_sect(con, aux, mid+1, hi, compare); // then move to the right side of the container and split it untill the end too.
+  sort_sect(con, aux, lo, mid, compare);
+  sort_sect(con, aux, mid+1, hi, compare);
   if(!compare(con[mid+1], con[mid])) return;
   merge_sect<RAC>(con, aux, lo, mid, hi, compare);
 }
@@ -102,8 +98,8 @@ void sort_sect(T (&con)[S], T (&aux)[S], unsigned lo, unsigned hi)
 
   unsigned mid = lo + (hi - lo) / 2;
 
-  sort_sect(con, aux, lo, mid); // start with the wholeleft side and keep splitting it untill we are done
-  sort_sect(con, aux, mid+1, hi); // then move to the right side of the container and split it untill the end too.
+  sort_sect(con, aux, lo, mid);
+  sort_sect(con, aux, mid+1, hi);
   merge_sect(con, aux, lo, mid, hi);
 }
 
@@ -119,11 +115,4 @@ auto merge_sort(T (&con)[S]) -> decltype(con)
 } // sorts
 
 } // algo
-
-
-// if(i > mid) aux[k] = con[j++];
-    // if(j > hi) aux[k] = con[i++];
-    // if(compare(con[j], con[i])) aux[k] = con[j++];
-    // else aux[k] = con[i++];
-
 #endif // MERGE_SORT_HPP_INCLUDED
