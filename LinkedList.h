@@ -9,10 +9,12 @@
 template <typename> class LinkedList;
 template <typename> class ListIterator;
 
+template <typename T> using NodePtr = typename LinkedList<T>::Node*;
+
 template <typename T>
 bool operator==(const ListIterator<T> &rhs, const ListIterator<T> &lhs);
 
-template <typename T> using SearchResult = std::pair<bool, typename LinkedList<T>::Node*>;
+template <typename T> using SearchResult = std::pair<bool, NodePtr<T>>;
 
 template <typename T>
 struct SLLNode
@@ -100,7 +102,7 @@ template <typename T>
 void LinkedList<T>::insert(Node *const pos, const T &val)
 {
     Node *node = root;
-    while(node != pos || node)  // same as node != nullptr i think && is required instead
+    while(node != pos && node)
         node = node->next;
 
     if(!node)

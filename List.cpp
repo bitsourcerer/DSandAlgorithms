@@ -18,5 +18,7 @@ int main()
     auto found = lst.find(88);
     cout << "data from found node: " << found.data << '\n';
 
+    lst.insert(ret2, 666);
+
     lst.traverse();
 }
