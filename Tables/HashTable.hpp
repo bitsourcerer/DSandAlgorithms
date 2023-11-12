@@ -29,23 +29,26 @@ template <class T> inline constexpr bool is_ostream_valid_v = can_output_to_stre
 
 namespace ds
 {
+
 template <typename TX, typename TY>
-struct Pair
+struct KVPair
 {
-    Pair() = default;
-    Pair(const TX& l, const TY& r) noexcept : first(l), second(r) { }
-    Pair(TX &&ml, TY &&mr) noexcept : first(std::move(ml)), second(std::move(mr)) { }
-    TX first;
-    TY second;
+    KVPair() = default;
+    KVPair(const KVPair &cp) : key(cp.key), value(cp.value) { }
+    KVPair(KVPair &&mv) : KVPair(std::move(mv.key), std::move(mv.value)) { }
+    KVPair(const TX& k, const TY& v) noexcept : key(k), value(v) { }
+    KVPair(TX &&k, TY &&v) noexcept : key(std::move(k)), value(std::move(v)) { }
+    TX key;
+    TY value;
 };
 
 template <typename TX, typename TY>
-Pair<TX, TY> createPair(TX &&first, TY &&second)
+KVPair<TX, TY> createPair(TX &&first, TY &&second)
 {
     using TypeX = std::remove_reference_t<TX>;
     using TypeY = std::remove_reference_t<TY>;
     // TX and TY are deduced to be either lvalue reference or rvalue reference.
-    return Pair(std::forward<TypeX>(first), std::forward<TypeY>(second));
+    return KVPair(std::forward<TypeX>(first), std::forward<TypeY>(second));
 }
 
 template <typename K, typename V, class H = std::hash<K>>
@@ -57,7 +60,7 @@ class HashTable
     class Iterator;
     using Key = typename std::remove_reference<K>::type;
     using Value = typename std::remove_reference<V>::type;
-    using Node = Pair<Key, Value>;
+    using Node = KVPair<const Key, Value>;
     using Element = std::optional<Node>;
     using Memory = Vector<Element>;
     using Hasher = H;
@@ -85,8 +88,8 @@ public:
     HashTable(Index capacity = cap);
     ~HashTable();
 
-    bool empty() const noexcept;
-    Index size() const;
+    bool empty() const noexcept(noexcept(size()));
+    Index size() const noexcept;
     Index capacity() const;
     double load() const;
     std::ostream& dump(std::ostream&, bool verbose = false) const; // verbosely dump table information
@@ -191,13 +194,13 @@ HashTable<K, V, H>::~HashTable()
 }
 
 template <typename K, typename V, class H>
-inline bool HashTable<K, V, H>::empty() const noexcept
+inline bool HashTable<K, V, H>::empty() const noexcept(noexcept(size()))
 {
     return !size();
 }
 
 template <typename K, typename V, class H>
-inline typename HashTable<K, V, H>::Index HashTable<K, V, H>::size() const
+inline typename HashTable<K, V, H>::Index HashTable<K, V, H>::size() const noexcept
 {
     // return std::count_if(std::execution::par, std::begin(elements), std::end(elements), HashTable::elementExists);
     return length;
@@ -240,8 +243,8 @@ std::ostream& HashTable<K, V, H>::dump(std::ostream &os, bool verbose) const
         os << std::setw(45) << std::setfill('-') << std::left << "K" << std::right << "V\n" << std::internal << std::setfill(' ');
 
        for(const Node &n : *this)
-       os << '|' << std::setw(20) << std::left << n.first
-       << " || " << std::setw(20) << std::right << n.second
+       os << '|' << std::setw(20) << std::left << n.key
+       << " || " << std::setw(20) << std::right << n.value
        << '|' << '\n';
 
        os << std::setw(47) << std::setfill('-') << '\0' << std::setfill(' ');
@@ -259,20 +262,20 @@ typename HashTable<K, V, H>::Value& HashTable<K, V, H>::operator[](const Key &ke
     Index index = hash(key);
     Element &current = elements.at(index);
 
-    if(!elementExists(current)) { current = {key, Value()}; ++length; } //current = {key, Value()}; ds::createPair(key, Value());
-    return current.value().second; // std::optional dependent! gotta change in future..
+    if(!elementExists(current)) { current.emplace(key, Value()); ++length; } //current = {key, Value()}; ds::createPair(key, Value());
+    return current.value().value; // std::optional dependent! gotta change in future..
 }
 
 template <typename K, typename V, class H>
 bool HashTable<K, V, H>::insert(const Node &pair)
 {
-    Index index = hash(pair.first);
+    Index index = hash(pair.key);
     Element& current = elements.at(index);
 
     if(elementExists(current)) return false;
     if(load() > maxload) rebuild();
     // current = {pair.first, pair.second};
-    current.emplace(pair.first, pair.second);
+    current.emplace(pair.key, pair.value);
     // Node& node = current.value();
     ++length;
     return true;
@@ -338,11 +341,14 @@ void HashTable<K, V, H>::rebuild()
     Index newcap = static_cast<Index>(oldcap * growthfactor);
 
     Memory newmem(newcap);
-    for(const Element &elem : elements)
+    for(Element &elem : elements)
         if(elementExists(elem))
         {
-            Index newindex = hasher(elem.value().first) % newcap;
-            newmem[newindex] = std::move(elem);
+            Node&& node = std::move(elem.value());
+            Index newindex = hasher(node.key) % newcap;
+            Element& newelem = newmem.at(newindex);
+            newelem.emplace(std::move(node));
+            // newmem[newindex].emplace(std::move(elem.value()));
         }
     // std::copy_if(std::execution::par,
     // std::make_move_iterator(std::begin(elements)),
