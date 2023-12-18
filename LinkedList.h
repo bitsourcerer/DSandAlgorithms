@@ -107,7 +107,7 @@ void LinkedList<T>::insert(Node *const pos, const T &val)
 
     if(!node)
     {
-        std::cout << "Invalid position!\n";
+        std::clog << "Invalid position!\n";
         return;
     }
     auto temp = node->next;
@@ -196,7 +196,7 @@ void LinkedList<T>::traverse() const
     Node *node = root;
     do
     {
-        std::cout << node->data << '\t';
+        std::clog << node->data << '\t';
         node = node->next;
     } while(node);
 }
