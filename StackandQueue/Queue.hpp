@@ -22,7 +22,8 @@ class Queue
     using reference = typename std::add_lvalue_reference<T>::type;
     using iterator = typename std::add_pointer<value_type>::type;
     using alternate_type = typename std::conditional< std::is_const<T>::value, value_type, const value_type >::type;
-    using allocator_type = typename std::remove_cv<value_type>::type;
+    using allocator_type = std::allocator<typename std::remove_cv<value_type>::type>;
+    using allocator_traits = std::allocator_traits<allocator_type>;
 
 public:
     Queue();
@@ -56,7 +57,7 @@ public:
 private:
     value_type *start, *finish, *pcap;
     mutable std::ptrdiff_t cap_size, bias;
-    std::allocator<allocator_type> mem;
+    allocator_type mem;
 
     template <class Iter>
     UnityPair<iterator> copyMemory(Iter, Iter);
@@ -143,21 +144,21 @@ template <typename...Args>
 void Queue<T>::emplace(Args&&...args)
 {
     checkMemory();
-    mem.construct(finish++, std::forward<Args>(args)...);
+    allocator_traits::construct(mem, finish++, std::forward<Args>(args)...);
 }
 
 template <typename T>
 void Queue<T>::push(const value_type &val)
 {
     checkMemory();
-    mem.construct(finish++, val);
+    allocator_traits::construct(mem, finish++, val);
 }
 
 template <typename T>
 void Queue<T>::push(value_type&& val)
 {
     checkMemory();
-    mem.construct(finish++, std::move(val));
+    allocator_traits::construct(mem, finish++, std::move(val));
 }
 
 template <typename T>
@@ -166,7 +167,7 @@ typename Queue<T>::value_type Queue<T>::pop()
     if(empty()) return value_type();
 
     value_type ret = front();
-    mem.destroy(start++);
+    allocator_traits::destroy(mem, start++);
     bias = start - pcap;  // OR ++bias;
 
     return ret;
@@ -195,7 +196,7 @@ void Queue<T>::fill(size_type n, value_type v)
         //for(size_type i = 0; i < n; ++i) start[i] = v;
         for(auto it = begin(); it != begin() + n; ++it) *it = v;
         //std::cout << "Difference : " << (end() - (begin() + n)) << "\t" << start[n] << std::endl;
-        while(end() > begin() + n) mem.destroy(--finish);
+        while(end() > begin() + n) allocator_traits::destroy(mem, --finish);
     }
     else
     {
@@ -215,7 +216,7 @@ template <typename T>
 void Queue<T>::clear()
 {
     if(empty()) return;
-    for(size_type i = 0, s = size(); i != s; ++i) mem.destroy(--finish);
+    for(size_type i = 0, s = size(); i != s; ++i) allocator_traits::destroy(mem, --finish);
 
     assert(finish == start && "Begin() must equal to End()");
     std::ptrdiff_t dealloc_n = cap_size - bias;
@@ -270,13 +271,13 @@ void Queue<T>::adjustMemory()
         start = pcap;
 
         //finish -= bias;
-        for(auto p = finish; p != finish - bias;) mem.destroy(--finish);
+        for(auto p = finish; p != finish - bias;) allocator_traits::destroy(mem, --finish);
         return;
     }
 
     value_type* new_start = mem.allocate(new_cap), *new_finish = new_start;
     for(auto p = start; p != finish;)
-        mem.construct(new_finish++, std::move(*p++));
+        allocator_traits::construct(mem, new_finish++, std::move(*p++));
 
     freeMemory();
 
@@ -293,7 +294,7 @@ void Queue<T>::freeMemory()
     //if(!start || !finish) return;
     /*std::cout << "Freed Memory: " << size() * sizeof(value_type) << " Bytes\t"
     << "Total Slots: " << capacity() << std::endl;*/
-    for(iterator p = finish; p != start;) mem.destroy(--p);
+    for(iterator p = finish; p != start;) allocator_traits::destroy(mem, --p);
     mem.deallocate(pcap, cap_size);
 }
 

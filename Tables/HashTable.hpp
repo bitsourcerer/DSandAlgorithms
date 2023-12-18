@@ -70,11 +70,12 @@ class HashTable
     // using Index = typename Memory::size_type;
     // using Memory = std::allocator<Pair>;
 
-    static const Index cap = 107; //initial capacity : overhead
+    static const Index cap = 107;
     static constexpr float maxload = 0.8;
-    static constexpr float growthfactor = 1.61803398875;
+    static constexpr float growthfactor = 1.61803398875; // golden ratio
 
 public:
+    // std compliant typedefines
     typedef Key key_type;
     typedef Value mapped_type;
     typedef Node element_type;
@@ -117,7 +118,7 @@ private:
     Index hash(const Key &key) const;
     static bool elementExists(const Element& optional) { return optional.has_value(); }
 
-    class Iterator
+    class Iterator : std::forward_iterator_tag
     {
         using Distance = std::ptrdiff_t;
     public:
@@ -158,8 +159,8 @@ private:
         Node& operator*() { checkValid(); return data.at(id).value(); }
         const Node& operator*() const { checkValid(); return data[id].value(); }
 
-        Node* operator->() { checkValid(); return std::addressof(data[id].value()); }
-        const Node* operator->() const { checkValid(); return std::addressof(data.at(id).value()); }
+        Node* operator->() { checkValid(); return std::addressof(getElement(id).value()); } //data[id].value()
+        const Node* operator->() const { checkValid(); return std::addressof(getElement(id).value()); }
 
         explicit operator bool(){ return id != data.size() && data.at(id).has_value(); }
 
@@ -169,7 +170,8 @@ private:
         Index id;
 
         void checkValid() const {
-            if(!data.at(id).has_value()) throw std::invalid_argument("Dereference of invalid iterator!");
+            if(!getElement(id).has_value()) throw std::invalid_argument("Dereference of invalid iterator!");
+            // !data.at(id).has_value()
         }
 
         void advance(Distance n) {
@@ -177,8 +179,17 @@ private:
         }
 
         void findNext() {
-            while(id < data.size() && !data[id].has_value()) ++id;
+            while(id < data.size() && !data[id].has_value()) ++id; // data.size() is equivalent of Map.capacity()
             // id += std::distance(std::begin(data) + id, std::find_if(std::execution::par, std::begin(data) + id + 1, std::end(data), elementExists));
+        }
+
+        auto getElement(Index idx) const -> Element& {
+            try {
+                return data.at(idx);
+            } catch(...) {
+                std::cerr << "Use of invalid iterator! @ " << __func__ << std::endl;
+                std::terminate();
+            }
         }
     };
 };
@@ -390,4 +401,4 @@ Index oldcap = capacity();
             
             ptr += n;
 */
-    // return length = std::count_if(std::execution::par, std::begin(elements), std::end(elements), HashTable::valueExists); //this function is const
+// return length = std::count_if(std::execution::par, std::begin(elements), std::end(elements), HashTable::valueExists); //this function is const

@@ -6,7 +6,7 @@
 *   Time  3:45 PM
 *   C++ Primer 5th Edition Chapter 16
 *   @note EXERCISE SECTION 16.1.2 PAGE 823
-*/
+**/
 
 #include <memory>
 #include <utility>  // std::move, std::pair, std::forward
@@ -30,6 +30,8 @@ template <typename T>
 class Vector
 {
     typedef T *iter_t;
+    using Allocator = std::allocator<T>;
+    using AllocTraits = std::allocator_traits<Allocator>;
 
 public:
     typedef T value_type;
@@ -161,30 +163,30 @@ Vector<T>& Vector<T>::operator=(const std::initializer_list<T> &il)
 template <typename T> void Vector<T>::push_back(const T &val)
 {
     check_alloc();
-    alloc.construct(last++, val);
+    AllocTraits::construct(alloc, last++, val);
 }
 
 template <typename T> void Vector<T>::push_back(T &&val)
 {
     check_alloc();
-    alloc.construct(last++, std::move(val));
+    AllocTraits::construct(alloc, last++, std::move(val));
 }
 
 template <typename T>
 template <class...Args> void Vector<T>::emplace_back(Args&&...args)
 {
     check_alloc();
-    alloc.construct(last++, std::forward<Args>(args)...);
+    AllocTraits::construct(alloc, last++, std::forward<Args>(args)...);
 }
 
 template <typename T> void Vector<T>::pop_back()
 {
-    if(size()) alloc.destroy(--last);
+    if(size()) AllocTraits::destroy(alloc, --last);
 }
 
 template <typename T> void Vector<T>::clear()
 {
-    while(last != first) alloc.destroy(--last);
+    while(last != first) AllocTraits::destroy(alloc, --last);
 }
 
 template <typename T> void Vector<T>::resize(size_type n)
@@ -214,7 +216,7 @@ template <class C> void Vector<T>::container_initialize(const C &container, bool
     auto fptr = alloc.allocate(container.size());    // or e - b
     auto lptr = fptr;
     while(b != e)
-        alloc.construct(lptr++, *b++);
+        AllocTraits::construct(alloc, lptr++, *b++);
 
     if(free) this->free();
     first = fptr;
@@ -232,7 +234,7 @@ template <typename T> void Vector<T>::free()
     if(first)   //if not null
     {
         for(auto p = last; p != first;)
-            alloc.destroy(--p);
+            AllocTraits::destroy(alloc, --p);
     }
     alloc.deallocate(first, capacity());
 }
@@ -248,7 +250,7 @@ void Vector<T>::reallocate()
     //for (size_type i = 0; i != size(); ++i)   // need copy of first, first_copy
     //while(size())   // since size is last - first; bad practice problem for deallocation
     for(auto first_copy = first; first_copy != last; /* ++first_copy */)
-        alloc.construct(newend++, *first_copy++);    // or std::move(*first++); or use make_move_iterator
+        AllocTraits::construct(alloc, newend++, *first_copy++);    // or std::move(*first++); or use make_move_iterator
     free();
 
     first = newstart;

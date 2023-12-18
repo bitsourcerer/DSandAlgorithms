@@ -16,6 +16,8 @@ public:
 	using pointer = value_type*;
 	using iterator = pointer;
 	using const_iterator = const value_type*;
+    using allocator_traits = std::allocator_traits<std::allocator<T>>;
+
 	typedef std::size_t size_type;
 
 	Stack();
@@ -87,23 +89,23 @@ template <typename T>
 void Stack<T>::push(const T &val)
 {
     check_allocate();
-    mem.construct(finish++, val);
+    allocator_traits::construct(mem, finish++, val);
 }
 
 template <typename T>
 void Stack<T>::push(T &&val)
 {
     check_allocate();
-    mem.construct(finish++, std::move(val));
+    allocator_traits::construct(mem, finish++, std::move(val));
 }
 
 template <typename T>
 typename Stack<T>::value_type Stack<T>::pop()
 {
-    //if(size()) mem.destroy(--finish);
+    //if(size()) allocator_traits::destroy(mem, --finish);
     value_type ret = top();
     if(empty()) return value_type();
-    mem.destroy(--finish);
+    allocator_traits::destroy(mem, --finish);
     return ret;
 }
 
@@ -143,7 +145,7 @@ void Stack<T>::reallocate()
     auto new_cap = size() ? size() * 2 : 1;
     pointer new_begin = mem.allocate(new_cap);
     pointer new_end = std::uninitialized_copy(std::make_move_iterator(start), std::make_move_iterator(finish) , new_begin);
-    //for(auto p = start; p != finish; ++p) mem.construct(new_end++, std::move(*p));
+    //for(auto p = start; p != finish; ++p) allocator_traits::construct(mem, new_end++, std::move(*p));
     free_memory();
 
     start = new_begin;
@@ -155,8 +157,8 @@ template <typename T>
 void Stack<T>::free_memory()
 {
     if(!start) return;
-    for(auto p = finish; p != start;) mem.destroy(--p);
-    //while(size() && start != finish) mem.destroy(--finish);
+    for(auto p = finish; p != start;) allocator_traits::destroy(mem, --p);
+    //while(size() && start != finish) allocator_traits::destroy(mem, --finish);
 
     mem.deallocate(start, capacity());
     //start = finish = cap = nullptr;
